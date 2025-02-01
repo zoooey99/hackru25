@@ -43,7 +43,6 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
   const filteredItems = items.filter(item =>
     item.Name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  console.log(filteredItems)
 
   const handleItemClick = (item: any) => {
     setSelectedItem(item);
@@ -54,7 +53,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item) => (
-          <Card key={item.id} className="p-6">
+          <Card key={item.Name} className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-semibold text-lg">{item.Name}</h3>
