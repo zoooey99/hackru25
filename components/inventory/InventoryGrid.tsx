@@ -29,7 +29,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:3753/getInventory');
+        const response = await fetch('https://wakefernbackend.onrender.com/getInventory');
         const data = await response.json();
         setItems(data);
       } catch (error) {
