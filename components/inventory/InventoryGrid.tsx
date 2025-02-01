@@ -68,11 +68,6 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
                 <span className="text-sm text-muted-foreground">Current Stock</span>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{item.Quantity} units</span>
-                  {item.trend === "up" ? (
-                    <TrendingUp className="h-4 w-4 text-chart-1" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-destructive" />
-                  )}
                 </div>
               </div>
 
