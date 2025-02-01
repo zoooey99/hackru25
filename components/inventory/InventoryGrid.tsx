@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,41 +8,42 @@ import { TrendingUp, TrendingDown, AlertTriangle, Package } from "lucide-react";
 import { InventoryItemModal } from "./InventoryItemModal";
 
 // Mock data - replace with actual API data
-const mockItems = [
-  {
-    id: 1,
-    name: "Organic Bananas",
-    sku: "FRUIT-001",
-    stock: 150,
-    threshold: 100,
-    trend: "up",
-    price: 2.99,
-    category: "Produce",
-  },
-  {
-    id: 2,
-    name: "Whole Milk",
-    sku: "DAIRY-001",
-    stock: 80,
-    threshold: 100,
-    trend: "down",
-    price: 4.49,
-    category: "Dairy",
-  },
-  // Add more mock items as needed
-];
+interface InventoryItem {
+  Name: string;
+  Price: number;
+  "Purchase Date": string;
+  "Expiration Date": string;
+  Quantity: number;
+  Supplier: string;
+}
 
 interface InventoryGridProps {
   searchQuery: string;
 }
 
 export function InventoryGrid({ searchQuery }: InventoryGridProps) {
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredItems = mockItems.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:3753/getInventory');
+        const data = await response.json();
+        setItems(data);
+      } catch (error) {
+        console.error('Error fetching inventory:', error);
+      }
+    };
+
+    fetchInventory();
+  }, []);
+
+  const filteredItems = items.filter(item =>
+    item.Name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  console.log(filteredItems)
 
   const handleItemClick = (item: any) => {
     setSelectedItem(item);
@@ -56,11 +57,10 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
           <Card key={item.id} className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-semibold text-lg">{item.name}</h3>
-                <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+                <h3 className="font-semibold text-lg">{item.Name}</h3>
               </div>
-              <Badge variant={item.stock < item.threshold ? "destructive" : "secondary"}>
-                {item.stock < item.threshold ? "Low Stock" : item.category}
+              <Badge variant={item.Quantity < 20 ? "destructive" : "secondary"}>
+                {item.Quantity < 20 ? "Low Stock" : "Good Stock"}
               </Badge>
             </div>
 
@@ -68,7 +68,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Current Stock</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{item.stock} units</span>
+                  <span className="font-semibold">{item.Quantity} units</span>
                   {item.trend === "up" ? (
                     <TrendingUp className="h-4 w-4 text-chart-1" />
                   ) : (
@@ -79,7 +79,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Unit Price</span>
-                <span className="font-semibold">${item.price}</span>
+                <span className="font-semibold">${item.Price}</span>
               </div>
 
               <div className="flex gap-2 mt-4">
@@ -95,7 +95,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
                   variant="default" 
                   size="sm" 
                   className="flex-1"
-                  disabled={item.stock >= item.threshold}
+                  disabled={item.Quantity >= 20}
                 >
                   Restock
                 </Button>
@@ -106,10 +106,11 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
       </div>
 
       <InventoryItemModal
-        item={selectedItem}
+        item={selectedItem?.Name}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
     </>
   );
 }
+
