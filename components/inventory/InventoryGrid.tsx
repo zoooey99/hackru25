@@ -8,6 +8,15 @@ import { TrendingUp, TrendingDown, AlertTriangle, Package } from "lucide-react";
 import { InventoryItemModal } from "./InventoryItemModal";
 
 // Mock data - replace with actual API data
+interface InventoryAssessment {
+  Name: string;
+  Quantity: number;
+  "Days Until Expiration": number;
+  "Predicted Quantity at Expiration": number | "N/A";
+  Status: InventoryStatus;
+  Color?: string; // Adding optional Color property
+}
+
 interface InventoryItem {
   Name: string;
   Price: number;
@@ -15,14 +24,7 @@ interface InventoryItem {
   "Expiration Date": string;
   Quantity: number;
   Supplier: string;
-  Assessment: InventoryAssessment[]
-}
-interface InventoryAssessment {
-  "Days Until Expiration": number;
-  Name: string;
-  "Predicted Quantity at Expiration": number;
-  Quantity: number;
-  Status: InventoryStatus;
+  Assessment: InventoryAssessment[];
 }
 type InventoryStatus = "Healthy Stock" | "Low Stock" | "Critical - Near Expiration" | "Expired";
 
@@ -38,10 +40,25 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
 
   useEffect(() => {
     const fetchInventory = async () => {
+      // In your fetch code:
       try {
         const response = await fetch('https://wakefernbackend.onrender.com/getInventory');
-        const data = await response.json();
-        setItems(data);
+        const data: InventoryItem[] = await response.json();
+        
+        const processedData = data.map(item => ({
+          ...item,
+          Assessment: item.Assessment.map(assessment => ({
+            ...assessment,
+            // Using Tailwind color classes instead of hex values
+            Color: assessment.Status === "Healthy Stock" ? "bg-green-500" :
+                  assessment.Status === "Low Stock" ? "bg-yellow-500" :
+                  assessment.Status === "Critical - Near Expiration" ? "bg-red-500" :
+                  assessment.Status === "Expired" ? "bg-gray-900" :
+                  "bg-gray-500"
+          }))
+        }));
+        
+        setItems(processedData);
       } catch (error) {
         console.error('Error fetching inventory:', error);
       }
@@ -68,9 +85,9 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
               <div>
                 <h3 className="font-semibold text-lg">{item.Name}</h3>
               </div>
-              <Badge variant={(item.Assessment[0]?.Status === "Critical - Near Expiration" || item.Assessment[0]?.Status === "Expired" ) ? "destructive" : "secondary"}>
-                {item.Assessment[0]?.Status}
-              </Badge>
+              <Badge className={`${item.Assessment[0]?.Color} text-white flex items-center gap-1`}>
+              {item.Assessment[0]?.Status}
+            </Badge>
             </div>
 
             <div className="space-y-4">
