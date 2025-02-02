@@ -72,8 +72,10 @@ const useInventoryDetails = (item: { name: string }, isOpen: boolean) => {
         const response = await fetch('https://wakefernbackend.onrender.com/getDetails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: item }),
+          body: JSON.stringify({ name: item.name })
         });
+        
+        console.log(JSON.stringify({ name: item.name }));
 
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
