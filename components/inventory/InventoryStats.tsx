@@ -43,10 +43,10 @@ export function InventoryStats() {
   const lowStockAlerts = useMemo(() => inventoryData?.filter((item: any) => item.Quantity < lowStockThreshold).length || 0, [inventoryData, lowStockThreshold]);
   const weeklySales = useMemo(() => {
     if (!salesData) return 0;
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 31);
     return salesData
-      .filter((sale: any) => new Date(sale["Sale Date"]) >= oneWeekAgo)
+      .filter((sale: any) => new Date(sale["Sale Date"]) >= oneMonthAgo)
       .reduce((sum: number, sale: any) => sum + sale.Price * sale.Quantity, 0);
   }, [salesData]);
 
@@ -112,10 +112,10 @@ export function InventoryStats() {
           )}
         </div>
 
-        {/* Weekly Sales */}
+        {/* Monthly Sales */}
         <div className="p-6 space-y-2 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Weekly Sales</span>
+            <span className="text-gray-500">Monthly Sales</span>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </div>
           {salesLoading ? (
