@@ -52,8 +52,8 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item) => (
-          <Card key={item.Name} className="p-6">
+        {filteredItems.map((item, index) => (
+          <Card key={`${item.Name}-${index}`} className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-semibold text-lg">{item.Name}</h3>
@@ -98,12 +98,13 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
           </Card>
         ))}
       </div>
-
-      <InventoryItemModal
-        item={selectedItem?.Name}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      {selectedItem && (
+        <InventoryItemModal
+          item={{ name: selectedItem.Name }}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
     </>
   );
 }
