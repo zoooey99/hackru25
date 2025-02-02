@@ -7,7 +7,7 @@ import { Package, AlertCircle, TrendingUp, Calendar, DollarSign, Box } from "luc
 import toast from 'react-hot-toast';
 
 // Strong TypeScript types
-type InventoryStatus = "Healthy Stock" | "Low Stock" | "Critical Stock";
+type InventoryStatus = "Healthy Stock" | "Low Stock" | "Critical - Near Expiration";
 
 interface SaleRecord {
   "Expiration Date": string;
@@ -138,6 +138,7 @@ const StatCard = ({ label, value, icon: Icon }: { label: string; value: string |
 // Main component with improved organization and error handling
 export function InventoryItemModal({ item, isOpen, onClose }: InventoryItemModalProps) {
   const { details, loading, error } = useInventoryDetails(item, isOpen);
+  const [newPrice, setNewPrice] = useState<number | null>(null);
 
   const handleRestock = async () => {
     try {
@@ -146,6 +147,43 @@ export function InventoryItemModal({ item, isOpen, onClose }: InventoryItemModal
       toast.success('Restock order placed successfully');
     } catch {
       toast.error('Failed to place restock order');
+    }
+  };
+
+  const handleDynamicPricing = async () => {
+    if (!details) return;
+
+    const assessment = details.Assessment[0];
+    const inventory = details.Inventory[0];
+    const metrics = calculateSalesMetrics(details.Sales);
+    const averageDailySales = metrics.totalQuantity / metrics.totalDays;
+
+    const daysUntilExpiration = assessment["Days Until Expiration"];
+    const predictedQuantityAtExpiration = assessment["Predicted Quantity at Expiration"];
+    const currentPrice = inventory.Price;
+
+    // Calculate the new price to ensure the item sells before expiration
+    const requiredSales = predictedQuantityAtExpiration / daysUntilExpiration;
+    const priceReductionFactor = requiredSales / averageDailySales;
+    const calculatedNewPrice = Math.max(currentPrice * (1 - priceReductionFactor), .5 * currentPrice);
+
+    setNewPrice(calculatedNewPrice);
+    console.log(`lowering price to ${calculatedNewPrice} for item ${assessment.Name}`);
+    try {
+      const response = await fetch('https://wakefernbackend.onrender.com/lowerPrice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: assessment.Name, price: calculatedNewPrice }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      toast.success('Price lowered successfully');
+    } catch (error) {
+      console.error('Error lowering price:', error);
+      toast.error('Failed to lower price');
     }
   };
 
@@ -282,6 +320,28 @@ export function InventoryItemModal({ item, isOpen, onClose }: InventoryItemModal
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Dynamic Pricing Section */}
+        {assessment.Status === "Critical - Near Expiration" && (
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-6">
+            <h3 className="font-semibold mb-4">Dynamic Pricing</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              The item is at risk of expiring before it sells. Lower the price to ensure it sells in time.
+            </p>
+            <button
+              onClick={handleDynamicPricing}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
+            >
+              <DollarSign className="h-4 w-4" />
+              Lower Price to Ensure Sale
+            </button>
+            {newPrice && (
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-4">
+                New Price: ${newPrice.toFixed(2)}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">
