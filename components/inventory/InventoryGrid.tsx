@@ -15,7 +15,17 @@ interface InventoryItem {
   "Expiration Date": string;
   Quantity: number;
   Supplier: string;
+  Assessment: InventoryAssessment[]
 }
+interface InventoryAssessment {
+  "Days Until Expiration": number;
+  Name: string;
+  "Predicted Quantity at Expiration": number;
+  Quantity: number;
+  Status: InventoryStatus;
+}
+type InventoryStatus = "Healthy Stock" | "Low Stock" | "Critical - Near Expiration" | "Expired";
+
 
 interface InventoryGridProps {
   searchQuery: string;
@@ -58,8 +68,8 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
               <div>
                 <h3 className="font-semibold text-lg">{item.Name}</h3>
               </div>
-              <Badge variant={item.Quantity < 20 ? "destructive" : "secondary"}>
-                {item.Quantity < 20 ? "Low Stock" : "Good Stock"}
+              <Badge variant={(item.Assessment[0]?.Status === "Critical - Near Expiration" || item.Assessment[0]?.Status === "Expired" ) ? "destructive" : "secondary"}>
+                {item.Assessment[0]?.Status}
               </Badge>
             </div>
 
@@ -89,7 +99,7 @@ export function InventoryGrid({ searchQuery }: InventoryGridProps) {
                   variant="default" 
                   size="sm" 
                   className="flex-1"
-                  disabled={item.Quantity >= 20}
+                  disabled={item.Assessment[0]?.Status === "Healthy Stock"}
                 >
                   Restock
                 </Button>

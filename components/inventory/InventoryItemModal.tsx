@@ -19,6 +19,7 @@ interface SaleRecord {
   Supplier: string;
 }
 
+
 interface InventoryAssessment {
   "Days Until Expiration": number;
   Name: string;
