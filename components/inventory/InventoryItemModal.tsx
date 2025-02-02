@@ -6,6 +6,7 @@ import { format } from "date-fns"
 import { Package, AlertCircle, TrendingUp, Calendar, DollarSign, Box } from "lucide-react"
 import toast from "react-hot-toast"
 import { GoogleTrendsChart } from "./GoogleTrendsChart"
+import DemandPredictionChart from "@/app/trends/page"
 
 // Strong TypeScript types
 type InventoryStatus = "Healthy Stock" | "Low Stock" | "Critical - Near Expiration"
@@ -307,7 +308,8 @@ export function InventoryItemModal({ item, isOpen, onClose }: InventoryItemModal
         {/* Google Trends Chart */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-6">
           <h3 className="font-semibold mb-4">Google Trends</h3>
-          <GoogleTrendsChart searchPhrase={item.name} />
+          {/* <GoogleTrendsChart searchPhrase={item.name} /> */}
+          <DemandPredictionChart itemName={item.name} />
         </div>
 
         {/* Dynamic Pricing Section */}
