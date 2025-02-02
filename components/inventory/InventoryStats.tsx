@@ -1,96 +1,150 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { TrendingUp, AlertTriangle, Package, ArrowUpRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { TrendingUp, AlertTriangle, Package, ArrowUpRight, RefreshCw } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import toast, { Toaster } from 'react-hot-toast';
 
-export function InventoryStats() {
-  const [totalItems, setTotalItems] = useState(0);
-  const [lowStockAlerts, setLowStockAlerts] = useState(0);
-  const [weeklySales, setWeeklySales] = useState(0);
-  const [pendingOrders, setPendingOrders] = useState(0);
+// Custom hook for fetching data
+function useFetchData(url: string) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch data");
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [url]);
 
   useEffect(() => {
-    // Fetch inventory data
-    fetch('https://wakefernbackend.onrender.com/getInventory')
-      .then(response => response.json())
-      .then(data => {
-        const totalItemsCount = data.length;
-        const lowStockItemsCount = data.filter(item => item.Quantity < 10).length; // Assuming low stock is less than 10
-        setTotalItems(totalItemsCount);
-        setLowStockAlerts(lowStockItemsCount);
-      })
-      .catch(error => console.error('Error fetching inventory:', error));
+    fetchData();
+  }, [fetchData]);
 
-    // Fetch sales data
-    fetch('https://wakefernbackend.onrender.com/getSales')
-      .then(response => response.json())
-      .then(data => {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  return { data, loading, error, refetch: fetchData };
+}
 
-        const recentSales = data.filter(sale => {
-          const saleDate = new Date(sale["Sale Date"]);
-          return saleDate >= oneWeekAgo;
-        });
+export function InventoryStats() {
+  const [lowStockThreshold] = useState(10);
+  const { data: inventoryData, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useFetchData('https://wakefernbackend.onrender.com/getInventory');
+  const { data: salesData, loading: salesLoading, error: salesError, refetch: refetchSales } = useFetchData('https://wakefernbackend.onrender.com/getSales');
+  const [pendingOrders] = useState(18);
 
-        const totalSales = recentSales.reduce((sum, sale) => sum + sale.Price * sale.Quantity, 0);
-        setWeeklySales(totalSales);
-      })
-      .catch(error => console.error('Error fetching sales:', error));
+  // Calculate derived data
+  const totalItems = useMemo(() => inventoryData?.length || 0, [inventoryData]);
+  const lowStockAlerts = useMemo(() => inventoryData?.filter((item: any) => item.Quantity < lowStockThreshold).length || 0, [inventoryData, lowStockThreshold]);
+  const weeklySales = useMemo(() => {
+    if (!salesData) return 0;
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return salesData
+      .filter((sale: any) => new Date(sale["Sale Date"]) >= oneWeekAgo)
+      .reduce((sum: number, sale: any) => sum + sale.Price * sale.Quantity, 0);
+  }, [salesData]);
 
-    // Placeholder for pending orders (assuming no direct endpoint for this)
-    setPendingOrders(18); // Replace with actual logic if available
-  }, []);
+  // Handle data refresh
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetchInventory(), refetchSales()]);
+    toast.success('Data refreshed successfully');
+  }, [refetchInventory, refetchSales]);
+
+  // Display error toasts
+  useEffect(() => {
+    if (inventoryError) {
+      toast.error(`Inventory Error: ${inventoryError}`);
+    }
+    if (salesError) {
+      toast.error(`Sales Error: ${salesError}`);
+    }
+  }, [inventoryError, salesError]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card className="p-6 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Total Items</span>
-          <Package className="h-4 w-4 text-primary" />
+    <div className="space-y-4">
+      <Toaster position="top-right" />
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Inventory Overview</h2>
+        <button 
+          className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50"
+          onClick={handleRefresh} 
+          disabled={inventoryLoading || salesLoading}
+        >
+          <RefreshCw className={`h-4 w-4 ${inventoryLoading || salesLoading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Total Items */}
+        <div className="p-6 space-y-2 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Total Items</span>
+            <Package className="h-4 w-4 text-blue-600" />
+          </div>
+          {inventoryLoading ? (
+            <div className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold">{totalItems}</h3>
+              <span className="text-sm text-gray-500">items</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold">{totalItems}</h3>
-          <span className="text-sm text-muted-foreground">items</span>
-        </div>
-      </Card>
 
-      <Card className="p-6 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Low Stock Alerts</span>
-          <AlertTriangle className="h-4 w-4 text-destructive" />
+        {/* Low Stock Alerts */}
+        <div className="p-6 space-y-2 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Low Stock Alerts</span>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          </div>
+          {inventoryLoading ? (
+            <div className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold">{lowStockAlerts}</h3>
+              <span className="text-sm text-red-600">items below {lowStockThreshold}</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold">{lowStockAlerts}</h3>
-          <span className="text-sm text-destructive">items below threshold</span>
-        </div>
-      </Card>
 
-      <Card className="p-6 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Weekly Sales</span>
-          <TrendingUp className="h-4 w-4 text-chart-1" />
+        {/* Weekly Sales */}
+        <div className="p-6 space-y-2 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Weekly Sales</span>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </div>
+          {salesLoading ? (
+            <div className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(weeklySales)}
+              </h3>
+              <span className="text-sm text-green-600 flex items-center">
+                <ArrowUpRight className="h-3 w-3" />
+                12%
+              </span>
+            </div>
+          )}
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold">${(weeklySales / 1000).toFixed(1)}K</h3>
-          <span className="text-sm text-chart-1 flex items-center">
-            <ArrowUpRight className="h-3 w-3" />
-            12%
-          </span>
-        </div>
-      </Card>
 
-      <Card className="p-6 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Pending Orders</span>
-          <Package className="h-4 w-4 text-primary" />
+        {/* Pending Orders */}
+        <div className="p-6 space-y-2 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Pending Orders</span>
+            <Package className="h-4 w-4 text-blue-600" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold">{pendingOrders}</h3>
+            <span className="text-sm text-gray-500">orders</span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold">{pendingOrders}</h3>
-          <span className="text-sm text-muted-foreground">orders</span>
-        </div>
-      </Card>
+      </div>
     </div>
   );
 }
